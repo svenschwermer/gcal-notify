@@ -27,11 +27,11 @@ var Cfg = struct {
 	ClientSecretPath  string
 	TokenPath         string
 	CalendarID        string
-	PollInterval      time.Duration
-	LookaheadInterval time.Duration
+	PollInterval      Duration
+	LookaheadInterval Duration
 }{
-	PollInterval:      3 * time.Minute,
-	LookaheadInterval: 24 * time.Hour,
+	PollInterval:      Duration{3 * time.Minute},
+	LookaheadInterval: Duration{24 * time.Hour},
 }
 
 func Parse(configFilePath string) {
@@ -60,4 +60,11 @@ func Parse(configFilePath string) {
 	if Cfg.CalendarID == "" {
 		log.Fatal("No calendar ID configured")
 	}
+}
+
+type Duration struct{ D time.Duration }
+
+func (d *Duration) UnmarshalText(data []byte) (err error) {
+	d.D, err = time.ParseDuration(string(data))
+	return
 }

@@ -57,7 +57,7 @@ func (n *Notifier) Poll(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			ticker = time.NewTimer(config.Cfg.PollInterval)
+			ticker = time.NewTimer(config.Cfg.PollInterval.D)
 		case <-ctx.Done():
 			return
 		}
@@ -65,7 +65,7 @@ func (n *Notifier) Poll(ctx context.Context) {
 		now := time.Now()
 		events, err := n.svc.Events.List(n.calID).Context(ctx).Do(
 			googleapi.QueryParameter("timeMin", now.Format(time.RFC3339)),
-			googleapi.QueryParameter("timeMax", now.Add(config.Cfg.LookaheadInterval).Format(time.RFC3339)),
+			googleapi.QueryParameter("timeMax", now.Add(config.Cfg.LookaheadInterval.D).Format(time.RFC3339)),
 			googleapi.QueryParameter("singleEvents", "True"),
 		)
 		if err != nil {
