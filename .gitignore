@@ -1,1 +1,4 @@
+*.pkg.tar.zst
+build/
 gcal-notify
+pkg/
