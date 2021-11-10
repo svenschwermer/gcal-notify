@@ -8,4 +8,4 @@ Type=simple
 ExecStart=/usr/bin/gcal-notify
 
 [Install]
-WantedBy=graphical-session.target
+WantedBy=default.target

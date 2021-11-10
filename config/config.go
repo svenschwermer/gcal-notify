@@ -64,7 +64,7 @@ func Parse(configFilePath string) {
 		log.Fatal("No calendar ID configured")
 	}
 
-	if Cfg.Debug {
+	if !Cfg.Debug {
 		Debug.SetOutput(io.Discard)
 	}
 }
