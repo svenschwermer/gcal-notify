@@ -9,6 +9,7 @@ import (
 
 	"github.com/esiqveland/notify"
 	"github.com/godbus/dbus/v5"
+	"github.com/google/go-cmp/cmp"
 	"github.com/svenschwermer/gcal-notify/browser"
 	"github.com/svenschwermer/gcal-notify/config"
 	"google.golang.org/api/calendar/v3"
@@ -87,42 +88,42 @@ func (n *Notifier) Poll(ctx context.Context) {
 
 		n.evMtx.Lock()
 		for _, event := range events.Items {
-			_, ok := n.ev[event.Id]
-			if !ok {
-				e := &Event{
-					Summary:     event.Summary,
-					Description: event.Description,
-					Hangout:     event.HangoutLink,
-					Link:        event.HtmlLink,
-					Location:    event.Location,
-					Reminders:   getReminders(event.Reminders),
+			e := &Event{
+				Summary:     event.Summary,
+				Description: event.Description,
+				Hangout:     event.HangoutLink,
+				Link:        event.HtmlLink,
+				Location:    event.Location,
+				Reminders:   getReminders(event.Reminders),
+			}
+			e.Start, err = time.Parse(time.RFC3339, event.Start.DateTime)
+			if err != nil {
+				log.Printf("Failed to parse Start %+v: %v", event.Start, err)
+				continue
+			}
+			e.End, err = time.Parse(time.RFC3339, event.End.DateTime)
+			if err != nil {
+				log.Printf("Failed to parse End %+v: %v", event.End, err)
+				continue
+			}
+			if event.OriginalStartTime != nil {
+				e.Start, err = time.Parse(time.RFC3339, event.OriginalStartTime.DateTime)
+				if err != nil {
+					log.Printf("Failed to parse OriginalStartTime %+v: %v", event.OriginalStartTime, err)
+					continue
 				}
+				e.End = e.Start.Add(e.End.Sub(e.Start))
+			}
+
+			existingEvent, isExisting := n.ev[event.Id]
+			if !isExisting {
 				n.ev[event.Id] = e
-
-				start, err := time.Parse(time.RFC3339, event.Start.DateTime)
-				if err != nil {
-					log.Printf("Failed to parse Start %+v: %v", event.Start, err)
-					continue
-				}
-				end, err := time.Parse(time.RFC3339, event.End.DateTime)
-				if err != nil {
-					log.Printf("Failed to parse End %+v: %v", event.End, err)
-					continue
-				}
-				if event.OriginalStartTime != nil {
-					e.Start, err = time.Parse(time.RFC3339, event.OriginalStartTime.DateTime)
-					if err != nil {
-						log.Printf("Failed to parse OriginalStartTime %+v: %v", event.OriginalStartTime, err)
-						continue
-					}
-					e.End = e.Start.Add(end.Sub(start))
-				} else {
-					e.Start = start
-					e.End = end
-				}
-
-				config.Debug.Printf("New event: %q start=%v reminders=%v",
-					e.Summary, e.Start, e.Reminders)
+				config.Debug.Printf("New event: summary=%q start=%v end=%v reminders=%v",
+					e.Summary, e.Start, e.End, e.Reminders)
+			} else if !cmp.Equal(existingEvent, e) {
+				n.ev[event.Id] = e
+				config.Debug.Printf("Changed event: summary=%q diff:\n%s",
+					e.Summary, cmp.Diff(existingEvent, e))
 			}
 		}
 		n.evMtx.Unlock()
@@ -175,7 +176,7 @@ func (n *Notifier) doNotify(e *Event) {
 	if err != nil {
 		log.Printf("Failed to send notification via dbus: %v", err)
 	} else {
-		config.Debug.Printf("Sent notification: %q id=%d", not.Summary, id)
+		config.Debug.Printf("Sent notification: summary=%q id=%d", not.Summary, id)
 	}
 
 	n.activeMtx.Lock()

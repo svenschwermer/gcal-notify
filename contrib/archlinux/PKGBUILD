@@ -1,31 +1,27 @@
 pkgname=gcal-notify
-pkgver=0.0.1
+pkgver=0
 pkgrel=1
 pkgdesc='Google Calendar notifier'
 arch=('x86_64')
 url="https://github.com/svenschwermer/$pkgname"
 license=('GPL')
 makedepends=('go')
-source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('7da52e86c0b5aa05671b2b09b451ee5646de54c9790a0daa8244ef119e1279c2')
+
+pkgver() {
+  git describe | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
 
 build() {
-  cd "$pkgname-$pkgver"
+  cd ../../..
   export CGO_CPPFLAGS="${CPPFLAGS}"
   export CGO_CFLAGS="${CFLAGS}"
   export CGO_CXXFLAGS="${CXXFLAGS}"
   export CGO_LDFLAGS="${LDFLAGS}"
   export GOFLAGS="-buildmode=pie -trimpath -ldflags=-linkmode=external -mod=readonly -modcacherw"
-  go build ./cmd/$pkgname
-}
-
-check() {
-  cd "$pkgname-$pkgver"
-  go test ./...
+  go build -o "$OLDPWD/$pkgname" ./cmd/$pkgname
 }
 
 package() {
-  cd "$pkgname-$pkgver"
   install -Dm755 -t "$pkgdir/usr/bin/" $pkgname 
-  install -Dm644 -t "$pkgdir/usr/lib/systemd/user/" contrib/systemd/$pkgname.service
+  install -Dm644 -t "$pkgdir/usr/lib/systemd/user/" ../../systemd/$pkgname.service
 }
