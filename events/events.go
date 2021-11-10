@@ -120,6 +120,9 @@ func (n *Notifier) Poll(ctx context.Context) {
 					e.Start = start
 					e.End = end
 				}
+
+				config.Debug.Printf("New event: %q start=%v reminders=%v",
+					e.Summary, e.Start, e.Reminders)
 			}
 		}
 		n.evMtx.Unlock()
@@ -171,6 +174,8 @@ func (n *Notifier) doNotify(e *Event) {
 	id, err := n.notifier.SendNotification(not)
 	if err != nil {
 		log.Printf("Failed to send notification via dbus: %v", err)
+	} else {
+		config.Debug.Printf("Sent notification: %q id=%d", not.Summary, id)
 	}
 
 	n.activeMtx.Lock()
@@ -179,6 +184,7 @@ func (n *Notifier) doNotify(e *Event) {
 }
 
 func (n *Notifier) onAction(action *notify.ActionInvokedSignal) {
+	config.Debug.Printf("Notification action: key=%s id=%d", action.ActionKey, action.ID)
 	n.activeMtx.Lock()
 	defer n.activeMtx.Unlock()
 	e, ok := n.active[action.ID]
@@ -192,6 +198,7 @@ func (n *Notifier) onAction(action *notify.ActionInvokedSignal) {
 }
 
 func (n *Notifier) onClosed(closer *notify.NotificationClosedSignal) {
+	config.Debug.Printf("Notification closed: reason=%v id=%d", closer.Reason, closer.ID)
 	n.activeMtx.Lock()
 	delete(n.active, closer.ID)
 	n.activeMtx.Unlock()
@@ -200,6 +207,10 @@ func (n *Notifier) onClosed(closer *notify.NotificationClosedSignal) {
 type Reminder struct {
 	Before   time.Duration
 	Notified bool
+}
+
+func (r *Reminder) String() string {
+	return fmt.Sprintf("{Before:%v Notified:%t}", r.Before, r.Notified)
 }
 
 type Event struct {

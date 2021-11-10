@@ -1,6 +1,7 @@
 package config
 
 import (
+	"io"
 	"log"
 	"os"
 	"path"
@@ -12,6 +13,7 @@ import (
 var (
 	DefaultPath string
 	configDir   string
+	Debug       = log.New(os.Stderr, "", 0)
 )
 
 func init() {
@@ -29,6 +31,7 @@ var Cfg = struct {
 	CalendarID        string
 	PollInterval      Duration
 	LookaheadInterval Duration
+	Debug             bool
 }{
 	PollInterval:      Duration{3 * time.Minute},
 	LookaheadInterval: Duration{24 * time.Hour},
@@ -59,6 +62,10 @@ func Parse(configFilePath string) {
 	}
 	if Cfg.CalendarID == "" {
 		log.Fatal("No calendar ID configured")
+	}
+
+	if Cfg.Debug {
+		Debug.SetOutput(io.Discard)
 	}
 }
 
