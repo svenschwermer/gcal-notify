@@ -120,10 +120,10 @@ func (n *Notifier) Poll(ctx context.Context) {
 				n.ev[event.Id] = e
 				config.Debug.Printf("New event: summary=%q start=%v end=%v reminders=%v",
 					e.Summary, e.Start, e.End, e.Reminders)
-			} else if !cmp.Equal(existingEvent, e) {
+			} else if !cmp.Equal(existingEvent, e, eventCompareOption) {
 				n.ev[event.Id] = e
 				config.Debug.Printf("Changed event: summary=%q diff:\n%s",
-					e.Summary, cmp.Diff(existingEvent, e))
+					e.Summary, cmp.Diff(existingEvent, e, eventCompareOption))
 			}
 		}
 		n.evMtx.Unlock()
@@ -213,6 +213,10 @@ type Reminder struct {
 func (r *Reminder) String() string {
 	return fmt.Sprintf("{Before:%v Notified:%t}", r.Before, r.Notified)
 }
+
+var eventCompareOption = cmp.FilterPath(func(p cmp.Path) bool {
+	return p.String() != "Reminders.Notified"
+}, cmp.Ignore())
 
 type Event struct {
 	Summary     string
