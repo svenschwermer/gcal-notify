@@ -88,6 +88,15 @@ func (n *Notifier) Poll(ctx context.Context) {
 
 		n.evMtx.Lock()
 		for _, event := range events.Items {
+			if event.Status == "cancelled" {
+				config.Debug.Printf("Event %q cancelled", event.Summary)
+				continue
+			}
+			if !attending(event) {
+				config.Debug.Printf("Not attending event %q", event.Summary)
+				continue
+			}
+
 			e := &Event{
 				Summary:     event.Summary,
 				Description: event.Description,
@@ -106,14 +115,6 @@ func (n *Notifier) Poll(ctx context.Context) {
 				log.Printf("Failed to parse End %+v: %v", event.End, err)
 				continue
 			}
-			if event.OriginalStartTime != nil {
-				e.Start, err = time.Parse(time.RFC3339, event.OriginalStartTime.DateTime)
-				if err != nil {
-					log.Printf("Failed to parse OriginalStartTime %+v: %v", event.OriginalStartTime, err)
-					continue
-				}
-				e.End = e.Start.Add(e.End.Sub(e.Start))
-			}
 
 			existingEvent, isExisting := n.ev[event.Id]
 			if !isExisting {
@@ -128,6 +129,15 @@ func (n *Notifier) Poll(ctx context.Context) {
 		}
 		n.evMtx.Unlock()
 	}
+}
+
+func attending(e *calendar.Event) bool {
+	for _, a := range e.Attendees {
+		if a.Self && a.ResponseStatus == "declined" {
+			return false
+		}
+	}
+	return true
 }
 
 func (n *Notifier) notifyWorker(ctx context.Context) {
