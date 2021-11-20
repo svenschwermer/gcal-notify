@@ -5,7 +5,7 @@ pkgdesc='Google Calendar notifier'
 arch=('x86_64')
 url="https://github.com/svenschwermer/$pkgname"
 license=('GPL')
-makedepends=('go')
+makedepends=('go' 'git')
 
 pkgver() {
   git describe | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
