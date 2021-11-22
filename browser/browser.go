@@ -12,6 +12,8 @@ import (
 	"os/exec"
 	"runtime"
 	"time"
+
+	"github.com/svenschwermer/gcal-notify/config"
 )
 
 // Commands returns a list of possible commands to use to open a url.
@@ -44,10 +46,12 @@ func Commands() [][]string {
 func Open(url string) bool {
 	for _, args := range Commands() {
 		cmd := exec.Command(args[0], append(args[1:], url)...)
+		config.Debug.Printf("browser: %v", cmd.Args)
 		if cmd.Start() == nil && appearsSuccessful(cmd, 3*time.Second) {
 			return true
 		}
 	}
+	config.Debug.Printf("browser: opening %s failed", url)
 	return false
 }
 
