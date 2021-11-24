@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/esiqveland/notify v0.11.0
-	github.com/godbus/dbus/v5 v5.0.3
+	github.com/godbus/dbus/v5 v5.0.4
 	github.com/google/go-cmp v0.5.6
 	github.com/pelletier/go-toml/v2 v2.0.0-beta.3
 	golang.org/x/oauth2 v0.0.0-20211005180243-6b3c2da341f1
