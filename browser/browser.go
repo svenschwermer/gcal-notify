@@ -8,15 +8,11 @@
 package browser
 
 import (
-	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"runtime"
-	"strings"
 	"time"
 
-	"github.com/godbus/dbus/v5"
 	"github.com/svenschwermer/gcal-notify/config"
 )
 
@@ -48,9 +44,6 @@ func Commands() [][]string {
 
 // Open tries to open url in a browser and reports whether it succeeded.
 func Open(url string) bool {
-	if err := updateEnv(); err != nil {
-		log.Printf("Failed to modify environment: %v", err)
-	}
 	for _, args := range Commands() {
 		cmd := exec.Command(args[0], append(args[1:], url)...)
 		config.Debug.Printf("browser: %v", cmd.Args)
@@ -77,33 +70,4 @@ func appearsSuccessful(cmd *exec.Cmd, timeout time.Duration) bool {
 	case err := <-errc:
 		return err == nil
 	}
-}
-
-func updateEnv() error {
-	conn, err := dbus.ConnectSessionBus()
-	if err != nil {
-		return fmt.Errorf("failed to connect to session bus: %w", err)
-	}
-	defer conn.Close()
-
-	sysobj := conn.Object("org.freedesktop.systemd1", dbus.ObjectPath("/org/freedesktop/systemd1"))
-	envVarint, err := sysobj.GetProperty("org.freedesktop.systemd1.Manager.Environment")
-	if err != nil {
-		return fmt.Errorf("failed to get systemd manager environment: %w", err)
-	}
-	var env []string
-	err = envVarint.Store(&env)
-	if err != nil {
-		return fmt.Errorf("unexpected systemd manager environment type: %w", err)
-	}
-	for _, e := range env {
-		if strings.HasPrefix(e, "DISPLAY=") || strings.HasPrefix(e, "WAYLAND_DISPLAY=") {
-			kv := strings.SplitN(e, "=", 2)
-			err = os.Setenv(kv[0], kv[1])
-			if err != nil {
-				return fmt.Errorf("failed to set environment variable %q: %w", e, err)
-			}
-		}
-	}
-	return nil
 }
