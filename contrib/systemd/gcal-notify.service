@@ -1,11 +1,13 @@
 [Unit]
 Description=Google Calendar notifier
-Requires=graphical-session.target dbus.socket
+Requires=dbus.socket
+PartOf=graphical-session.target
 After=graphical-session.target dbus.socket
+ConditionEnvironment=WAYLAND_DISPLAY
 
 [Service]
 Type=simple
 ExecStart=/usr/bin/gcal-notify
 
 [Install]
-WantedBy=default.target
+WantedBy=graphical-session.target
