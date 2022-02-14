@@ -8,6 +8,7 @@ ConditionEnvironment=WAYLAND_DISPLAY
 [Service]
 Type=simple
 ExecStart=/usr/bin/gcal-notify
+Restart=always
 
 [Install]
 WantedBy=graphical-session.target

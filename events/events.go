@@ -88,12 +88,21 @@ func (n *Notifier) Poll(ctx context.Context) {
 
 		n.evMtx.Lock()
 		for _, event := range events.Items {
+			id := event.Id
+			existingEvent, isExisting := n.ev[id]
+
 			if event.Status == "cancelled" {
-				config.Debug.Printf("Event %q cancelled", event.Summary)
+				if isExisting {
+					config.Debug.Printf("Event %q cancelled", event.Summary)
+					delete(n.ev, id)
+				}
 				continue
 			}
 			if !attending(event) {
-				config.Debug.Printf("Not attending event %q", event.Summary)
+				if isExisting {
+					config.Debug.Printf("Not attending event %q", event.Summary)
+					delete(n.ev, id)
+				}
 				continue
 			}
 
@@ -116,13 +125,13 @@ func (n *Notifier) Poll(ctx context.Context) {
 				continue
 			}
 
-			existingEvent, isExisting := n.ev[event.Id]
 			if !isExisting {
-				n.ev[event.Id] = e
+				n.ev[id] = e
 				config.Debug.Printf("New event: summary=%q start=%v end=%v reminders=%v",
 					e.Summary, e.Start, e.End, e.Reminders)
 			} else if !cmp.Equal(existingEvent, e, eventCompareOption) {
-				n.ev[event.Id] = e
+				// TODO: this doesn't appear to work
+				n.ev[id] = e
 				config.Debug.Printf("Changed event: summary=%q diff:\n%s",
 					e.Summary, cmp.Diff(existingEvent, e, eventCompareOption))
 			}
