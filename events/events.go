@@ -91,6 +91,7 @@ func (n *Notifier) Poll(ctx context.Context) {
 			id := event.Id
 			existingEvent, isExisting := n.ev[id]
 
+			// TODO handle deleted events (they're not returned in events.Items)
 			if event.Status == "cancelled" {
 				if isExisting {
 					config.Debug.Printf("Event %q cancelled", event.Summary)
@@ -130,7 +131,6 @@ func (n *Notifier) Poll(ctx context.Context) {
 				config.Debug.Printf("New event: summary=%q start=%v end=%v reminders=%v",
 					e.Summary, e.Start, e.End, e.Reminders)
 			} else if !cmp.Equal(existingEvent, e, eventCompareOption) {
-				// TODO: this doesn't appear to work
 				n.ev[id] = e
 				config.Debug.Printf("Changed event: summary=%q diff:\n%s",
 					e.Summary, cmp.Diff(existingEvent, e, eventCompareOption))
@@ -234,7 +234,7 @@ func (r *Reminder) String() string {
 }
 
 var eventCompareOption = cmp.FilterPath(func(p cmp.Path) bool {
-	return p.String() != "Reminders.Notified"
+	return p.String() == "Reminders.Notified"
 }, cmp.Ignore())
 
 type Event struct {
