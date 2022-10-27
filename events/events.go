@@ -90,14 +90,21 @@ func (n *Notifier) Poll(ctx context.Context) {
 		}
 
 		n.evMtx.Lock()
+
+		deletedEvents := make(map[string]bool, len(n.ev))
+		for id := range n.ev {
+			deletedEvents[id] = true
+		}
+
 		for _, event := range events.Items {
 			id := event.Id
 			existingEvent, isExisting := n.ev[id]
+			deletedEvents[id] = false
 
-			// TODO handle deleted events (they're not returned in events.Items)
 			if event.Status == "cancelled" {
 				if isExisting {
 					config.Debug.Printf("Event %q cancelled", event.Summary)
+					n.closeNotifications(existingEvent)
 					delete(n.ev, id)
 				}
 				continue
@@ -105,6 +112,7 @@ func (n *Notifier) Poll(ctx context.Context) {
 			if !attending(event) {
 				if isExisting {
 					config.Debug.Printf("Not attending event %q", event.Summary)
+					n.closeNotifications(existingEvent)
 					delete(n.ev, id)
 				}
 				continue
@@ -130,16 +138,26 @@ func (n *Notifier) Poll(ctx context.Context) {
 			}
 
 			if !isExisting {
-				n.ev[id] = e
 				config.Debug.Printf("New event: summary=%q start=%v end=%v reminders=%v",
 					e.Summary, e.Start, e.End, e.Reminders)
-			} else if !cmp.Equal(existingEvent, e, eventCompareOption) {
-				n.closeNotifications(existingEvent)
 				n.ev[id] = e
+			} else if !cmp.Equal(existingEvent, e, eventCompareOption) {
 				config.Debug.Printf("Changed event: summary=%q diff:\n%s",
 					e.Summary, cmp.Diff(existingEvent, e, eventCompareOption))
+				n.closeNotifications(existingEvent)
+				n.ev[id] = e
 			}
 		}
+
+		for id, deleted := range deletedEvents {
+			if deleted {
+				e := n.ev[id]
+				config.Debug.Printf("Event %q deleted", e.Summary)
+				n.closeNotifications(e)
+				delete(n.ev, id)
+			}
+		}
+
 		n.evMtx.Unlock()
 	}
 }
