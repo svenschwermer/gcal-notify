@@ -44,7 +44,7 @@ func Parse(configFilePath string) {
 	} else {
 		defer configFile.Close()
 		dec := toml.NewDecoder(configFile)
-		dec.SetStrict(true)
+		dec.DisallowUnknownFields()
 		if err := dec.Decode(&Cfg); err != nil {
 			log.Fatalf("Failed to decode configuration file: %v", err)
 		}
