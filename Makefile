@@ -20,6 +20,10 @@ install:
 	install -Dm644 -t $(PREFIX)/lib/systemd/user contrib/systemd/gcal-notify.service
 	sed -i 's|@PREFIX@|$(PREFIX)|g' $(PREFIX)/lib/systemd/user/gcal-notify.service
 
+restart:
+	systemctl --user daemon-reload
+	systemctl --user restart gcal-notify
+
 uninstall:
 	rm -f $(PREFIX)/bin/gcal-notify
 	rm -f $(PREFIX)/lib/systemd/user/gcal-notify.service

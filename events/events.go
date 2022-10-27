@@ -26,14 +26,17 @@ type Notifier struct {
 
 	active    map[uint32]*Event // key: notification ID
 	activeMtx sync.Mutex
+
+	checkNotifications chan struct{}
 }
 
 func NewNotifier(svc *calendar.Service, calendarID string) (*Notifier, error) {
 	n := &Notifier{
-		svc:    svc,
-		calID:  calendarID,
-		ev:     make(map[string]*Event),
-		active: make(map[uint32]*Event),
+		svc:                svc,
+		calID:              calendarID,
+		ev:                 make(map[string]*Event),
+		active:             make(map[uint32]*Event),
+		checkNotifications: make(chan struct{}, 1),
 	}
 	sessionBus, err := dbus.SessionBusPrivate()
 	if err != nil {
@@ -131,6 +134,7 @@ func (n *Notifier) Poll(ctx context.Context) {
 				config.Debug.Printf("New event: summary=%q start=%v end=%v reminders=%v",
 					e.Summary, e.Start, e.End, e.Reminders)
 			} else if !cmp.Equal(existingEvent, e, eventCompareOption) {
+				n.closeNotifications(existingEvent)
 				n.ev[id] = e
 				config.Debug.Printf("Changed event: summary=%q diff:\n%s",
 					e.Summary, cmp.Diff(existingEvent, e, eventCompareOption))
@@ -160,7 +164,7 @@ func (n *Notifier) notifyWorker(ctx context.Context) {
 			} else {
 				for _, r := range e.Reminders {
 					if !r.Notified && time.Until(e.Start) <= r.Before {
-						n.doNotify(e)
+						r.NotificationID = n.doNotify(e)
 						r.Notified = true
 					}
 				}
@@ -170,13 +174,14 @@ func (n *Notifier) notifyWorker(ctx context.Context) {
 
 		select {
 		case <-ticker.C:
+		case <-n.checkNotifications:
 		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func (n *Notifier) doNotify(e *Event) {
+func (n *Notifier) doNotify(e *Event) uint32 {
 	not := notify.Notification{
 		AppName: "gcal-notify",
 		// https://specifications.freedesktop.org/icon-naming-spec/latest/ar01s04.html
@@ -201,6 +206,7 @@ func (n *Notifier) doNotify(e *Event) {
 	n.activeMtx.Lock()
 	n.active[id] = e
 	n.activeMtx.Unlock()
+	return id
 }
 
 func (n *Notifier) onAction(action *notify.ActionInvokedSignal) {
@@ -224,9 +230,27 @@ func (n *Notifier) onClosed(closer *notify.NotificationClosedSignal) {
 	n.activeMtx.Unlock()
 }
 
+func (n *Notifier) closeNotifications(e *Event) {
+	n.activeMtx.Lock()
+	defer n.activeMtx.Unlock()
+
+	for _, r := range e.Reminders {
+		if r.Notified {
+			n.notifier.CloseNotification(r.NotificationID)
+			delete(n.active, r.NotificationID)
+		}
+	}
+
+	select {
+	case n.checkNotifications <- struct{}{}:
+	default:
+	}
+}
+
 type Reminder struct {
-	Before   time.Duration
-	Notified bool
+	Before         time.Duration
+	Notified       bool
+	NotificationID uint32
 }
 
 func (r *Reminder) String() string {
@@ -234,7 +258,12 @@ func (r *Reminder) String() string {
 }
 
 var eventCompareOption = cmp.FilterPath(func(p cmp.Path) bool {
-	return p.String() == "Reminders.Notified"
+	switch p.String() {
+	case "Reminders.Notified", "Reminders.NotificationID":
+		return true // ignore
+	default:
+		return false
+	}
 }, cmp.Ignore())
 
 type Event struct {
