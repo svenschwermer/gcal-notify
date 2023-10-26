@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -99,7 +100,21 @@ func GetTokenSourceFromDisk(ctx context.Context) (oauth2.TokenSource, error) {
 	return cfg.TokenSource(ctx, tok), nil
 }
 
-func WriteTokenToDisk(tok *oauth2.Token) error {
+func WriteTokenToDisk(ts oauth2.TokenSource, fatal bool) {
+	if err := writeTokenToDisk(ts); err != nil {
+		logger := log.Printf
+		if fatal {
+			logger = log.Fatalf
+		}
+		logger("Failed to write auth token to disk: %v", err)
+	}
+}
+
+func writeTokenToDisk(ts oauth2.TokenSource) error {
+	tok, err := ts.Token()
+	if err != nil {
+		return fmt.Errorf("failed to get token from token source: %w", err)
+	}
 	tokenBytes, err := json.Marshal(tok)
 	if err != nil {
 		return fmt.Errorf("failed to marshal token: %w", err)
@@ -107,9 +122,5 @@ func WriteTokenToDisk(tok *oauth2.Token) error {
 	if err := os.MkdirAll(path.Dir(config.Cfg.TokenPath), 0755); err != nil {
 		return fmt.Errorf("failed to create parent directory: %w", err)
 	}
-	err = os.WriteFile(config.Cfg.TokenPath, tokenBytes, 0600)
-	if err != nil {
-		return fmt.Errorf("failed to write token: %w", err)
-	}
-	return nil
+	return os.WriteFile(config.Cfg.TokenPath, tokenBytes, 0600)
 }

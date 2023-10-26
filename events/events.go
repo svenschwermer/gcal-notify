@@ -66,10 +66,11 @@ func (n *Notifier) Poll(ctx context.Context) {
 			return
 		}
 
-		now := time.Now()
-		events, err := n.svc.Events.List(n.calID).Context(ctx).Do(
-			googleapi.QueryParameter("timeMin", now.Format(time.RFC3339)),
-			googleapi.QueryParameter("timeMax", now.Add(config.Cfg.LookaheadInterval.D).Format(time.RFC3339)),
+		timeMin := time.Now()
+		timeMax := timeMin.Add(config.Cfg.LookaheadInterval.D)
+		events, err := n.svc.Events.List(n.calID).Context(ctx).EventTypes("default").Do(
+			googleapi.QueryParameter("timeMin", timeMin.Format(time.RFC3339)),
+			googleapi.QueryParameter("timeMax", timeMax.Format(time.RFC3339)),
 			googleapi.QueryParameter("singleEvents", "True"),
 		)
 		if err != nil {
