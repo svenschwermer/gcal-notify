@@ -55,7 +55,7 @@ func NewNotifier(svc *calendar.Service, calendarID string) (*Notifier, error) {
 	return n, nil
 }
 
-func (n *Notifier) Poll(ctx context.Context) {
+func (n *Notifier) Poll(ctx context.Context) error {
 	go n.notifyWorker(ctx)
 	ticker := time.NewTimer(0)
 	for {
@@ -63,12 +63,12 @@ func (n *Notifier) Poll(ctx context.Context) {
 		case <-ticker.C:
 			ticker = time.NewTimer(config.Cfg.PollInterval.D)
 		case <-ctx.Done():
-			return
+			return ctx.Err()
 		}
 
 		timeMin := time.Now()
 		timeMax := timeMin.Add(config.Cfg.LookaheadInterval.D)
-		events, err := n.svc.Events.List(n.calID).Context(ctx).EventTypes("default").Do(
+		events, err := n.svc.Events.List(n.calID).Context(ctx).Do(
 			googleapi.QueryParameter("timeMin", timeMin.Format(time.RFC3339)),
 			googleapi.QueryParameter("timeMax", timeMax.Format(time.RFC3339)),
 			googleapi.QueryParameter("singleEvents", "True"),

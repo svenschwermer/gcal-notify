@@ -26,15 +26,18 @@ func init() {
 }
 
 var Cfg = struct {
-	ClientSecretPath  string
-	TokenPath         string
-	CalendarID        string
-	PollInterval      Duration
-	LookaheadInterval Duration
-	Debug             bool
+	ClientSecretPath     string
+	TokenPath            string
+	CalendarID           string
+	PollInterval         Duration
+	LookaheadInterval    Duration
+	LocationPollInterval Duration
+	SlackTokenFile       string
+	Debug                bool
 }{
-	PollInterval:      Duration{3 * time.Minute},
-	LookaheadInterval: Duration{24 * time.Hour},
+	PollInterval:         Duration{3 * time.Minute},
+	LookaheadInterval:    Duration{24 * time.Hour},
+	LocationPollInterval: Duration{15 * time.Minute},
 }
 
 func Parse(configFilePath string) {
@@ -62,6 +65,9 @@ func Parse(configFilePath string) {
 	}
 	if Cfg.CalendarID == "" {
 		log.Fatal("No calendar ID configured")
+	}
+	if Cfg.SlackTokenFile == "" {
+		Cfg.SlackTokenFile = path.Join(configDir, "gcal-notify", "slack-token")
 	}
 
 	if !Cfg.Debug {

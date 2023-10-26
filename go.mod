@@ -9,6 +9,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.1.0
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/oauth2 v0.13.0
+	golang.org/x/sync v0.4.0
 	google.golang.org/api v0.148.0
 )
 

@@ -24,6 +24,10 @@ default. This can be changed via the command line parameter `-config`.
     default=`3m`)
 - `LookaheadInterval`: Longest possible notification duration (optional,
     default=`24h`)
+- `LocationPollInterval`: Interval at which the Google Calendar API is polled
+    for working location events (optional, default=`15m`)
+- `SlackTokenFile`: Slack token file (optional,
+    default=`~/.config/gcal-notify/slack-token`)
 
 [1]:https://specifications.freedesktop.org/notification-spec/latest/ar01s09.html
 [2]:https://wayland.emersion.fr/mako/
